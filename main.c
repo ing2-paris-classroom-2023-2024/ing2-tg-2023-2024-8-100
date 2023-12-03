@@ -484,7 +484,7 @@ void affiche_ListeS(ListeS l){
 //****************************************************************
 
 
-struct Station newStat(float temps_cycle){
+struct Station newStat(float temps_cycle, int id){
     struct Station New;
     New.temps_cycle = temps_cycle;
     New.temps_total = 0;
@@ -493,7 +493,7 @@ struct Station newStat(float temps_cycle){
     for(int j = 0; j<MAX_LENGTH; j++){
         New.operations[j] = -1;
     }
-    New.couleur =-1;
+    New.couleur =id;
     return New;
 }
 
@@ -522,23 +522,24 @@ void creationStationsPresTemp(ListeOp *l,float temps_cycle, ListeS *res){
     int nbop = compterOperations(l);
     int* tritopo = (int*)malloc(nbop * sizeof(int));
     tritopo = triTopo(l);
-
+/*
     printf("Tri Topologique:");
     for(int i  = 1; i< nbop; i++){
         printf("%d ,",tritopo[i]);
     }
     printf("\n\n");
-
+*/
     int i = 0;
+    int j = 0;
     while(!creatfini(tritopo,nbop) && i<nbop){
-        struct Station sta= newStat(temps_cycle);
+        struct Station sta= newStat(temps_cycle,j);
 
         while( i<nbop &&  ajouterOp( *PtrOp(l,tritopo[i]) ,&sta )){
             tritopo[i]=-1;
             i++;
         }
         empileS(sta,res);
-
+        j++;
     }
 }
 
@@ -577,10 +578,12 @@ int main(){
         struct Station station = newStatCoul(tempscycle,i,l);
         empileS(station,&S_exc);
     }
-    //affiche_ListeS(S_exc);
+    printf("Contrainte d'exclusion:\n");
+    affiche_ListeS(S_exc);
 
+    printf("===============================================================\n");
 
-
+    printf("Contrainte de precedence et de temps de cycle:\n");
     ListeS S_pres_tem;
     initVideS(&S_pres_tem);
     creationStationsPresTemp(&l,tempscycle,&S_pres_tem);
@@ -590,3 +593,4 @@ int main(){
 
     return 0;
 }
+
