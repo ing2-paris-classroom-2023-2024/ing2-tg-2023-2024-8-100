@@ -484,7 +484,7 @@ void affiche_ListeS(ListeS l){
 //****************************************************************
 
 
-struct Station newStat(float temps_cycle,ListeOp l){
+struct Station newStat(float temps_cycle){
     struct Station New;
     New.temps_cycle = temps_cycle;
     New.temps_total = 0;
@@ -499,31 +499,48 @@ struct Station newStat(float temps_cycle,ListeOp l){
 
 bool ajouterOp(struct Operation op, struct Station *s){
     if(s->temps_total +op.temps <= s->temps_cycle){
-        s->operations[s->nb_operations++] = op.id;
+        s->operations[s->nb_operations] = op.id;
+        s->temps_total += op.temps;
+        s->nb_operations++;
         return true;
     }else{
         return false;
     }
 }
 
+bool creatfini(int tritopo[], int nbop){
+    for(int i =0; i<nbop; i++){
+        if(tritopo[i]!=-1){
+            return false;
+        }
+    }
+    return true;
+}
 
-ListeS creationStationsPresTemp(ListeOp *l){
+
+void creationStationsPresTemp(ListeOp *l,float temps_cycle, ListeS *res){
     int nbop = compterOperations(l);
     int* tritopo = (int*)malloc(nbop * sizeof(int));
     tritopo = triTopo(l);
 
-    ListeS S_exc;
-    initVideS(&S_exc);
+    printf("Tri Topologique:");
+    for(int i  = 1; i< nbop; i++){
+        printf("%d ,",tritopo[i]);
+    }
+    printf("\n\n");
 
-    struct Station station =
-    while(){
+    int i = 0;
+    while(!creatfini(tritopo,nbop) && i<nbop){
+        struct Station sta= newStat(temps_cycle);
 
+        while( i<nbop &&  ajouterOp( *PtrOp(l,tritopo[i]) ,&sta )){
+            tritopo[i]=-1;
+            i++;
+        }
+        empileS(sta,res);
 
     }
-
 }
-
-
 
 
 //****************************************************************
@@ -560,18 +577,16 @@ int main(){
         struct Station station = newStatCoul(tempscycle,i,l);
         empileS(station,&S_exc);
     }
-    affiche_ListeS(S_exc);
+    //affiche_ListeS(S_exc);
 
-/*
-    int nbop = compterOperations(&l);
-    int* tritopo = (int*)malloc(nbop * sizeof(int));
-    tritopo = triTopo(&l);
-    printf("Tri Topologique:");
-    for(int i  = 1; i< nbop; i++){
-        printf("%d ,",tritopo[i]);
-    }
-    affiche_Liste(l);
 
-    printf("\nFIN MAIN\n");*/
+
+    ListeS S_pres_tem;
+    initVideS(&S_pres_tem);
+    creationStationsPresTemp(&l,tempscycle,&S_pres_tem);
+    affiche_ListeS(S_pres_tem);
+
+    printf("\nFIN MAIN\n");
+
     return 0;
 }
