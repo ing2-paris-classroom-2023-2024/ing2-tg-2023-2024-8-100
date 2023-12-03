@@ -14,6 +14,7 @@ struct Operation{
     int precedence[MAX_LENGTH];
     int nbprec;
     int couleur;
+    bool visite;
 
 }Operation;
 
@@ -30,6 +31,7 @@ struct Operation newOp(int id, float temps){
         New.precedence[i] = -1;
     }
     New.couleur = -1;
+    New.visite = false;
     return New;
 }
 
@@ -47,18 +49,20 @@ void afficheOp(struct Operation o){
             printf(",%d", o.exclus[i]);
         }
     }
-    printf("]\n");
+    printf("](nb=%d)\n",o.nbexc);
 
     printf("precedence:[");
     if(o.precedence[0]!=-1) {
-        printf("%d", o.precedence[0]);
+        printf("%d,", o.precedence[0]);
     }
     for(int i  = 1; i< MAX_LENGTH; i++){
         if(o.precedence[i]!=-1) {
-            printf(",%d", o.precedence[i]);
+            printf("%d,", o.precedence[i]);
         }
     }
-    printf("]\n");
+    printf("] (nb=%d)\n",o.nbprec);
+    printf("visite= %d\n",o.visite);
+
 }
 //--------------------------------------------------------------------------------------------------------------------------------------
 struct Bloc{
@@ -94,6 +98,37 @@ void affiche_Liste(ListeOp l)
     }
 }
 
+ListeOp copieListeOperations(ListeOp original) {
+    ListeOp copie = NULL;
+    ListeOp courant = original;
+
+    while (courant != NULL) {
+        ListeOp nouveau = (ListeOp)malloc(sizeof(struct Bloc));
+        if (nouveau == NULL) {
+            // Gestion de l'erreur d'allocation mÃ©moire
+            return NULL;
+        }
+
+        nouveau->op = courant->op;
+        nouveau->suivant = NULL;
+
+        if (copie == NULL) {
+            copie = nouveau;
+        } else {
+            ListeOp temp = copie;
+            while (temp->suivant != NULL) {
+                temp = temp->suivant;
+            }
+            temp->suivant = nouveau;
+        }
+
+        courant = courant->suivant;
+    }
+
+    return copie;
+}
+
+
 struct Operation *PtrOp(ListeOp *l,int id){
     if(l==NULL){
         printf("n'est pas dans la liste");
@@ -111,7 +146,7 @@ struct Operation *PtrOp(ListeOp *l,int id){
 float temps_cycle(char const *fichier){
     FILE* file = fopen(fichier,"r");
     if (file==NULL) {
-        perror("Erreur lors de l'ouverture du fichier");
+        perror("Erreur lors de l'ouverture du fichier temps_cycle");
     }
 
     float res;
@@ -122,10 +157,10 @@ float temps_cycle(char const *fichier){
     return res;
 }
 
-void operations(ListeOp *l, char const *fichier){
+void operation(ListeOp *l, char const *fichier){
     FILE* file = fopen(fichier,"r");
     if (file==NULL) {
-        perror("Erreur lors de l'ouverture du fichier");
+        perror("Erreur lors de l'ouverture du fichier operation");
     }
 
     int id;
@@ -141,7 +176,7 @@ void operations(ListeOp *l, char const *fichier){
 void exclusion(ListeOp *l, char const *fichier){
     FILE* file = fopen(fichier,"r");
     if (file==NULL) {
-        perror("Erreur lors de l'ouverture du fichier");
+        perror("Erreur lors de l'ouverture du fichier exclusion");
     }
 
     int i, j;
@@ -157,20 +192,20 @@ void exclusion(ListeOp *l, char const *fichier){
     fclose(file);
 }
 
-void precedence(ListeOp *l, char const *fichier){
+void prescedence(ListeOp *l, char const *fichier){
     FILE* file = fopen(fichier,"r");
     if (file==NULL) {
-        perror("Erreur lors de l'ouverture du fichier");
+        perror("Erreur lors de l'ouverture du fichier prescedence");
     }
 
     int i, j;
 
     while(fscanf(file, "%d %d", &i, &j) != EOF){
-        struct Operation *ptr_i = PtrOp(l,i);
+        //struct Operation *ptr_i = PtrOp(l,i);
         struct Operation *ptr_j = PtrOp(l,j);
 
-        (ptr_i)->precedence[(ptr_i)->nbprec++] = (ptr_j)->id;
-        (ptr_j)->precedence[(ptr_j)->nbprec++] = (ptr_i)->id;
+        //(ptr_i)->precedence[(ptr_i)->nbprec++] = j;
+        (ptr_j)->precedence[(ptr_j)->nbprec++] = i;
 
     }
     fclose(file);
@@ -201,13 +236,13 @@ int compterOperations(ListeOp *l) {
 bool toutesOperationsColorees(ListeOp l) {
     if (l == NULL) {
         return true;
+    }else {
+        if (l->op.couleur == -1) {
+            return false;
+        } else {
+            return toutesOperationsColorees(l->suivant);
+        }
     }
-
-    if (l->op.couleur == -1) {
-        return false;
-    }
-
-    return toutesOperationsColorees(l->suivant);
 }
 
 int* trierDecroissantExcl(ListeOp *l) {
@@ -264,7 +299,6 @@ int coloration(ListeOp *l){
     int* ids_tries = trierDecroissantExcl(l);
 
     int couleur[nbop];
-    int nondecouleurk[nbop];
     for (int i = 0; i <= nbop; i++){
         couleur[i] = -1;
     }
@@ -310,24 +344,39 @@ struct Station{
     float temps_cycle;
     int operations[MAX_LENGTH];
     int nb_operations;
+    float temps_total;
     int couleur;  //ou id
 }Station;
 
 
-struct Station newStat(float temps_cycle, int couleur){
+struct Station newStatCoul(float temps_cycle, int couleur,ListeOp l){
     struct Station New;
     New.temps_cycle = temps_cycle;
     New.couleur = couleur;
-    for(int i  = 0; i< MAX_LENGTH; i++){
-        New.operations[i] = -1;
+    New.temps_total = 0;
+
+    int i=0;
+    ListeOp current = l;
+    while (current != NULL) {
+        if (current->op.couleur == couleur) {
+            New.operations[i] = current->op.id;
+            New.temps_total += current->op.temps;
+            i++;
+        }
+        current = current->suivant;
     }
-    New.nb_operations = 0;
+    New.nb_operations = i;
+    for(int j = i; j<MAX_LENGTH; j++){
+        New.operations[j] = -1;
+    }
     return New;
 }
 
+
 void afficheS(struct Station s){
     printf("Station %d\n",s.couleur);
-    printf("Temps:%f\n",s.temps_cycle);
+    printf("Temps cycle:%f\n",s.temps_cycle);
+    printf("Temps total:%f\n",s.temps_total);
     printf("Nombre d'operations:%d\n",s.nb_operations);
 
     printf("Operations:[");
@@ -342,6 +391,64 @@ void afficheS(struct Station s){
     printf("]\n");
 }
 //***************************************************************************
+
+bool tritopofini(int tritopo[], int nbop){
+    for(int i =0; i<nbop; i++){
+        if(tritopo[i]==-1){
+            return false;
+        }
+    }
+    return true;
+}
+
+void retirerDesSucceseurs(ListeOp *l, int id, int nbop){
+    ListeOp *pl;
+    pl = l;
+    while(*pl!=NULL){
+        for(int i=0; i< nbop ;i++ ){
+            if((*pl)->op.precedence[i]==id){
+                (*pl)->op.precedence[i]=-1;
+                (*pl)->op.nbprec--;
+
+            }
+        }
+        pl = &(*pl)->suivant;
+    }
+}
+
+int* triTopo(ListeOp* l){
+    int nbop = compterOperations(l);
+    int* tritopo = (int*)malloc(nbop * sizeof(int));
+    int t = 0;
+    for(int i  = 0; i< nbop; i++){
+        tritopo[i] = -1;
+    }
+    ListeOp* pl;
+    ListeOp copie = copieListeOperations(*l);
+    while (!tritopofini(tritopo,nbop)) {
+        pl = &copie;
+        while ((*pl)->op.nbprec!=0 || (*pl)->op.visite){
+            pl  = &(*pl)->suivant;
+        }
+        if(*pl==NULL){
+            perror("le graphique a un cycle (n'est pas un DAG)");
+        }else{
+
+
+            tritopo[t] = (*pl)->op.id;
+            t++;
+            retirerDesSucceseurs(&copie,(*pl)->op.id,nbop);
+            (*pl)->op.visite = true;
+
+        }
+    }
+    return tritopo;
+}
+
+
+
+
+//*****************************************************************************
 struct BlocS{
     struct Station s;
     struct BlocS *suivant;
@@ -349,19 +456,73 @@ struct BlocS{
 
 typedef struct BlocS *ListeS;
 
+void initVideS( ListeS *L){
+    *L = NULL ;
+}
 
-ListeS ajouteS(struct Station s, ListeS l)
-{
+ListeS ajouteS(struct Station s, ListeS l){
     ListeS tmp = (ListeS) malloc(sizeof(BlocS) );
     tmp->s = s ;
     tmp->suivant = l ;
     return tmp ;
 }
 
-void empileS(struct Station s, ListeS *L)
-{
+void empileS(struct Station s, ListeS *L){
     *L = ajouteS(s,*L) ;
 }
+
+void affiche_ListeS(ListeS l){
+    if(l!=NULL){
+        affiche_ListeS(l->suivant);
+        afficheS(l->s);
+        printf("\n");
+    }
+}
+
+
+
+//****************************************************************
+
+
+struct Station newStat(float temps_cycle,ListeOp l){
+    struct Station New;
+    New.temps_cycle = temps_cycle;
+    New.temps_total = 0;
+
+    New.nb_operations = 0;
+    for(int j = 0; j<MAX_LENGTH; j++){
+        New.operations[j] = -1;
+    }
+    New.couleur =-1;
+    return New;
+}
+
+bool ajouterOp(struct Operation op, struct Station *s){
+    if(s->temps_total +op.temps <= s->temps_cycle){
+        s->operations[s->nb_operations++] = op.id;
+        return true;
+    }else{
+        return false;
+    }
+}
+
+
+ListeS creationStationsPresTemp(ListeOp *l){
+    int nbop = compterOperations(l);
+    int* tritopo = (int*)malloc(nbop * sizeof(int));
+    tritopo = triTopo(l);
+
+    ListeS S_exc;
+    initVideS(&S_exc);
+
+    struct Station station =
+    while(){
+
+
+    }
+
+}
+
 
 
 
@@ -370,29 +531,47 @@ void empileS(struct Station s, ListeS *L)
 
 int main(){
     system("cls");
-    ListeOp l1;
-    initVide(&l1);
+    ListeOp l;
+    initVide(&l);
 
     const char *tmpccl = "temps_cycle.txt";
     float tempscycle;
     tempscycle = temps_cycle(tmpccl);
 
-
     const char *op = "operation.txt";
-    operations(&l1,op);
+    operation(&l,op);
 
     const char *exc = "exclusion.txt";
-    exclusion(&l1,exc);
+    exclusion(&l,exc);
 
     const char *prec = "prescedence.txt";
-    precedence(&l1,prec);
+    prescedence(&l,prec);
 
-    int nb_couleur = coloration(&l1);
-    printf("nb couleur:%d\n", nb_couleur );
-
-    affiche_Liste(l1);
+    //affiche_Liste(l);
 
 
-   return 0;
+    int nb_couleur = coloration(&l);
+    //printf("nb couleur:%d\n", nb_couleur );
+
+
+    ListeS S_exc;
+    initVideS(&S_exc);
+    for(int i = 0; i<nb_couleur; i++){
+        struct Station station = newStatCoul(tempscycle,i,l);
+        empileS(station,&S_exc);
+    }
+    affiche_ListeS(S_exc);
+
+/*
+    int nbop = compterOperations(&l);
+    int* tritopo = (int*)malloc(nbop * sizeof(int));
+    tritopo = triTopo(&l);
+    printf("Tri Topologique:");
+    for(int i  = 1; i< nbop; i++){
+        printf("%d ,",tritopo[i]);
+    }
+    affiche_Liste(l);
+
+    printf("\nFIN MAIN\n");*/
+    return 0;
 }
-
