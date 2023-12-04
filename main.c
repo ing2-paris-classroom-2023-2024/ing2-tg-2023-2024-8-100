@@ -522,13 +522,7 @@ void creationStationsPresTemp(ListeOp *l,float temps_cycle, ListeS *res){
     int nbop = compterOperations(l);
     int* tritopo = (int*)malloc(nbop * sizeof(int));
     tritopo = triTopo(l);
-/*
-    printf("Tri Topologique:");
-    for(int i  = 1; i< nbop; i++){
-        printf("%d ,",tritopo[i]);
-    }
-    printf("\n\n");
-*/
+
     int i = 0;
     int j = 0;
     while(!creatfini(tritopo,nbop) && i<nbop){
@@ -546,6 +540,70 @@ void creationStationsPresTemp(ListeOp *l,float temps_cycle, ListeS *res){
 
 //****************************************************************
 
+bool ajouterOpExc(ListeOp *l,int tritopo[] ,int nbop,struct Operation op, struct Station *s){
+    //printf("\nDEBUT AJOUTER\n");
+    //printf("\non essaye d'ajoute op %d a s %d\n",op.id, s->couleur);
+    for(int i = 0; i< s->nb_operations; i++){
+        struct Operation opi = *PtrOp(l,s->operations[i]);
+        if(opi.couleur!=op.couleur){
+            //printf("pas la meme couleur\n");
+            return false;
+        }
+    }
+    int j =0;
+    while(j<nbop){
+        if(tritopo[j]==op.id){
+            s->operations[s->nb_operations] = op.id;
+            s->temps_total += op.temps;
+            s->nb_operations++;
+            //printf("ajout d'op %d a s %d\n",op.id, s->couleur);
+            return true;
+        }else if(tritopo[j]!=-1){
+            //printf("prescedence non respectÃ©e\n");
+            return false;
+        }
+        j++;
+    }
+    //printf("comment ca mon reuf ????????????????????????\n");
+    return false;
+}
+
+void creationStationsExcPrec(ListeOp *l,float temps_cycle, ListeS *res) {
+    int nbop = compterOperations(l);
+    int* tritopo = (int*)malloc(nbop * sizeof(int));
+    tritopo = triTopo(l);
+
+    int j = 0;
+    int op_places = 0;
+    while(op_places<nbop){
+        struct Station sta= newStat(temps_cycle,j);
+        int i = 0;
+        while(i<nbop) {
+            //printf("Tri Topologique:");
+            for(int i  = 0; i< nbop; i++){
+                //printf("(%d)=%d ,",i,tritopo[i]);
+            }
+            while (op_places<nbop && tritopo[i] != -1 && ajouterOpExc(l,tritopo,nbop, *PtrOp(l, tritopo[i]), &sta)) {
+                //printf("i=%d\n",i);
+                tritopo[i] = -1;
+                op_places++;
+                i++;
+            }
+            //printf("i=%d (sortie)\n",i);
+            i++;
+        }
+        //printf("SORTIE DE LA BIG BOUCLE\n");
+        //afficheS(sta);
+        empileS(sta,res);
+        j++;
+    }
+}
+
+
+
+
+
+//****************************************************************
 
 int main(){
     system("cls");
@@ -570,27 +628,47 @@ int main(){
 
     int nb_couleur = coloration(&l);
     //printf("nb couleur:%d\n", nb_couleur );
-
-
-    ListeS S_exc;
-    initVideS(&S_exc);
-    for(int i = 0; i<nb_couleur; i++){
-        struct Station station = newStatCoul(tempscycle,i,l);
-        empileS(station,&S_exc);
+    if(true) {
+        ListeS S_exc;
+        initVideS(&S_exc);
+        for (int i = 0; i < nb_couleur; i++) {
+            struct Station station = newStatCoul(tempscycle, i, l);
+            empileS(station, &S_exc);
+        }
+        printf("Contrainte d'exclusion:\n");
+        affiche_ListeS(S_exc);
     }
-    printf("Contrainte d'exclusion:\n");
-    affiche_ListeS(S_exc);
+    if(false) {
+        printf("Contrainte de precedence et de temps de cycle:\n");
+        ListeS S_pres_tem;
+        initVideS(&S_pres_tem);
+        creationStationsPresTemp(&l, tempscycle, &S_pres_tem);
+        affiche_ListeS(S_pres_tem);
+    }
+    if(true){
+        printf("=======================================================\n");
+        printf("Contrainte d'exclusion et de precedence\n");
+        ListeS S_exc_prec;
+        initVideS(&S_exc_prec);
+        creationStationsExcPrec(&l,tempscycle,&S_exc_prec);
+        affiche_ListeS(S_exc_prec);
+    }
+    if(false){
+        printf("Contrainte d'exclusion et temps de cycle\n");
+        ListeS S_exc_tem;
+        initVideS(&S_exc_tem);
+        //operation
+        affiche_ListeS(S_exc_tem);
+    }
 
-    printf("===============================================================\n");
-
-    printf("Contrainte de precedence et de temps de cycle:\n");
-    ListeS S_pres_tem;
-    initVideS(&S_pres_tem);
-    creationStationsPresTemp(&l,tempscycle,&S_pres_tem);
-    affiche_ListeS(S_pres_tem);
+    if(false){
+        printf("Contrainte d'exclusion,de precedence et temps de cycle\n");
+        ListeS S;
+        initVideS(&S);
+        //operation
+        affiche_ListeS(S);
+    }
 
     printf("\nFIN MAIN\n");
-
     return 0;
 }
-
