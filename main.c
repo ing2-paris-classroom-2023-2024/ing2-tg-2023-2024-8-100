@@ -105,7 +105,7 @@ ListeOp copieListeOperations(ListeOp original) {
     while (courant != NULL) {
         ListeOp nouveau = (ListeOp)malloc(sizeof(struct Bloc));
         if (nouveau == NULL) {
-            // Gestion de l'erreur d'allocation mÃ©moire
+            // Gestion de l'erreur d'allocation mémoire
             return NULL;
         }
 
@@ -540,8 +540,7 @@ void creationStationsPresTemp(ListeOp *l,float temps_cycle, ListeS *res){
 
 //****************************************************************
 
-bool ajouterOpExc(ListeOp *l,int tritopo[] ,int nbop,struct Operation op, struct Station *s){
-    //printf("\nDEBUT AJOUTER\n");
+bool ajouterOpExc(ListeOp *l,struct Operation op, struct Station *s){
     //printf("\non essaye d'ajoute op %d a s %d\n",op.id, s->couleur);
     for(int i = 0; i< s->nb_operations; i++){
         struct Operation opi = *PtrOp(l,s->operations[i]);
@@ -550,23 +549,11 @@ bool ajouterOpExc(ListeOp *l,int tritopo[] ,int nbop,struct Operation op, struct
             return false;
         }
     }
-    int j =0;
-    while(j<nbop){
-        if(tritopo[j]==op.id){
-            s->operations[s->nb_operations] = op.id;
-            s->temps_total += op.temps;
-            s->nb_operations++;
-            //printf("ajout d'op %d a s %d\n",op.id, s->couleur);
-            return true;
-        }else if(tritopo[j]!=-1){
-            //printf("prescedence non respectÃ©e\n");
-            return false;
-        }
-        j++;
-    }
-    //printf("comment ca mon reuf ????????????????????????\n");
-    return false;
-}
+    s->operations[s->nb_operations] = op.id;
+    s->temps_total += op.temps;
+    s->nb_operations++;
+    //printf("ajout d'op %d a s %d\n",op.id, s->couleur);
+    return true;}
 
 void creationStationsExcPrec(ListeOp *l,float temps_cycle, ListeS *res) {
     int nbop = compterOperations(l);
@@ -579,21 +566,13 @@ void creationStationsExcPrec(ListeOp *l,float temps_cycle, ListeS *res) {
         struct Station sta= newStat(temps_cycle,j);
         int i = 0;
         while(i<nbop) {
-            //printf("Tri Topologique:");
-            for(int i  = 0; i< nbop; i++){
-                //printf("(%d)=%d ,",i,tritopo[i]);
-            }
-            while (op_places<nbop && tritopo[i] != -1 && ajouterOpExc(l,tritopo,nbop, *PtrOp(l, tritopo[i]), &sta)) {
-                //printf("i=%d\n",i);
+            while (op_places<nbop && tritopo[i] != -1 && ajouterOpExc(l, *PtrOp(l, tritopo[i]), &sta)) {
                 tritopo[i] = -1;
                 op_places++;
                 i++;
             }
-            //printf("i=%d (sortie)\n",i);
             i++;
         }
-        //printf("SORTIE DE LA BIG BOUCLE\n");
-        //afficheS(sta);
         empileS(sta,res);
         j++;
     }
@@ -672,3 +651,8 @@ int main(){
     printf("\nFIN MAIN\n");
     return 0;
 }
+
+
+
+
+
